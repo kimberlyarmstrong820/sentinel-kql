@@ -1,0 +1,12 @@
+// EN: Detect suspicious parent-child process chains (LOLBin spawning script/archiver).
+// JA: 不審な親子プロセス（LOLBin→スクリプト/アーカイバ）を検出。
+//
+// MITRE: T1059 (Command and Scripting), T1202 (Indirect Cmd Exec)
+// Data: DeviceProcessEvents (Defender for Endpoint)
+
+DeviceProcessEvents
+| where TimeGenerated > ago(1d)
+| where InitiatingProcessFileName in~ ("rundll32.exe","regsvr32.exe","mshta.exe","wmic.exe","powershell.exe","cmd.exe")
+| where FileName in~ ("wscript.exe","cscript.exe","7z.exe","tar.exe","powershell.exe","curl.exe")
+| project TimeGenerated, DeviceName, InitiatingProcessFileName, InitiatingProcessCommandLine, FileName, ProcessCommandLine, AccountName
+| order by TimeGenerated desc
