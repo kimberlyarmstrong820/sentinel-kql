@@ -1,0 +1,19 @@
+// EN: Possible C2 over HTTP(S) via proxy—small beacons at regular intervals.
+// JA: プロキシ経由のHTTP(S)で一定間隔の小さなビーコンを検出。
+//
+// MITRE: T1071.001 (Web Protocols)
+// Data: CommonSecurityLog (Zscaler/Proxy) or ASIM Web
+
+let lookback = 1d;
+CommonSecurityLog
+| where TimeGenerated > ago(lookback)
+| where DeviceAction has_any ("Allowed","Proxy") // keep both; attacker traffic may be allowed
+| extend Host = iif(isempty(DestinationHostName), tostring(parse_url(RequestURL).Host), DestinationHostName)
+| summarize
+    Calls=count(),
+    DistinctHours=dcount(bin(TimeGenerated, 1h)),
+    MinBytes=min(SentBytes),
+    MaxBytes=max(SentBytes),
+    AvgPeriod=avg(todouble(toscalar(1))) by SourceIP, Host, RequestClientApplication
+| where Calls > 20 and MaxBytes < 1500 // EN: many small requests; JA: 小さい通信が高頻度
+| order by Calls desc
