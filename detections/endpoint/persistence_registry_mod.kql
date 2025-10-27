@@ -1,0 +1,13 @@
+// EN: Persistence via Run/RunOnce registry keys modification.
+// JA: レジストリ Run/RunOnce キー変更による永続化を検出。
+//
+// MITRE: T1060 (Registry Run Keys/Startup Folder)
+// Data: DeviceRegistryEvents (MDE)
+
+DeviceRegistryEvents
+| where TimeGenerated > ago(3d)
+| where RegistryKey has_any ("\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                             "\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce")
+| where ActionType in~ ("RegistryValueSet","RegistryKeyCreated")
+| project TimeGenerated, DeviceName, RegistryKey, PreviousRegistryValueData, RegistryValueData, AccountName
+| order by TimeGenerated desc
