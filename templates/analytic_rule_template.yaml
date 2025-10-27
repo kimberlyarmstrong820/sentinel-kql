@@ -1,0 +1,45 @@
+# EN: Base template for Scheduled Analytics Rule import into Sentinel
+# JA: Sentinel 取込用のスケジュール型アナリティクスルール雛形
+$schema: https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#
+contentId: 00000000-0000-0000-0000-000000000000    # replace with a new GUID
+name: Unusual DNS Lookup
+kind: Scheduled
+properties:
+  description: >
+    EN: Detect endpoints performing DNS lookups to rarely-seen domains.
+    JA: 組織内で稀なドメインへのDNS問い合わせを検出する。
+  severity: Medium
+  tactics:
+    - CommandAndControl
+  techniques:
+    - T1071.004
+  query: |
+    // paste KQL from detections/network/unusual_dns_lookup.kql
+    DnsEvents
+    | where TimeGenerated > ago(1d)
+    | summarize Count = count() by QueryName
+  queryFrequency: PT24H         # run every 24h
+  queryPeriod: PT30H            # search 30h window
+  triggerOperator: GreaterThan
+  triggerThreshold: 0
+  suppressionDuration: PT0H
+  suppressionEnabled: false
+  eventGroupingSettings:
+    aggregationKind: SingleAlert
+  customDetails:
+    Domain: QueryName
+    Count: Count
+  entityMappings:
+    - entityType: Host
+      fieldMappings:
+        - identifier: HostName
+          columnName: Computer
+  requiredDataConnectors:
+    - connectorId: DNS
+      dataTypes:
+        - DnsEvents
+  alertDetailsOverride:
+    alertDisplayNameFormat: "Unusual DNS Lookup: {{QueryName}}"
+    alertDescriptionFormat: >
+      EN: Domain not seen in baseline.
+      JA: ベースラインに存在しないドメインが観測されました。
