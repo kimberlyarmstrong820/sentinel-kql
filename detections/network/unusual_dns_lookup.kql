@@ -1,0 +1,33 @@
+
+---
+
+# detections/
+
+**detections/network/unusual_dns_lookup.kql**
+```kql
+// EN: Detect endpoints performing DNS lookups to rarely-seen domains in the org.
+// JA: 組織内で稀なドメインへのDNS問い合わせを検出する。
+//
+// MITRE: T1071.004 (Application Layer Protocol: DNS)
+// Data: DnsEvents (AMA) or imDns (if ASIM normalized)
+// Notes:
+//   - Baseline: 7–30 days historical window
+//   - Alert on domains not seen in baseline
+
+let lookback = 1d;
+let baseline_start = 30d;
+let baseline_exclusion = 7d;
+// Build baseline of common domains (exclude most recent 7d to reduce contamination)
+// JA: ベースラインは直近7日を除外して30日分から作成
+let baseline = materialize(
+    DnsEvents
+    | where TimeGenerated between (ago(baseline_start) .. ago(baseline_exclusion))
+    | summarize by QueryName
+);
+// Current window domains not in baseline
+DnsEvents
+| where TimeGenerated > ago(lookback)
+| summarize Count = count(), FirstSeen=min(TimeGenerated), LastSeen=max(TimeGenerated) by QueryName
+| join kind=leftanti baseline on QueryName
+| where not(QueryName has_any (".local", ".arpa")) // EN: filter noise; JA: ノイズ除外
+| sort by Count desc
